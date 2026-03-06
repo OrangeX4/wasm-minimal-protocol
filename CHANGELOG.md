@@ -47,7 +47,7 @@ All dates in this file are in UTC.
 
 ## wasi-stub
 
-### [Unreleased]
+### [0.3.0] - 2026-03-06
 
 #### Added
 - Support stubbing functions that return `i64`, `f32`, or `f64` — only `i32` was supported previously (#32).
