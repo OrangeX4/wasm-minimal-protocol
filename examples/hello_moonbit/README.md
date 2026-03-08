@@ -36,7 +36,7 @@ fn write_args_to_buffer_raw(ptr : Int) = "typst_env" "wasm_minimal_protocol_writ
 
 ### Getting the data pointer
 
-In MoonBit's wasm linear-memory backend, a `FixedArray[Byte]` value is a heap pointer with the following layout:
+`FixedArray[Byte]` and `Bytes` share the same linear-memory layout:
 
 ```
 heap_ptr + 0 ..  3 : refcount (i32)
@@ -44,29 +44,38 @@ heap_ptr + 4 ..  7 : packed length + type info (i32)
 heap_ptr + 8 .. +N : actual byte data
 ```
 
-The data pointer (what the host expects) is therefore `heap_ptr + 8`. An `extern "wasm"` helper computes this offset:
+The data pointer is therefore `heap_ptr + 8`. A single `extern "wasm"` helper works for both types — `FixedArray[Byte]` is converted to `Bytes` via a zero-cost `"%identity"` cast:
 
 ```moonbit
-#borrow(arr)
-extern "wasm" fn fixedarray_data_ptr(arr : FixedArray[Byte]) -> Int =
+#borrow(bs)
+extern "wasm" fn data_ptr(bs : Bytes) -> Int =
   #|(func (param i32) (result i32)
   #|  local.get 0
   #|  i32.const 8
   #|  i32.add)
+
+fn to_bytes(arr : FixedArray[Byte]) -> Bytes = "%identity"
+```
+
+Static byte strings use `b"..."` literals, which are stored as constants in the wasm data section (no heap allocation):
+
+```moonbit
+pub fn hello() -> Int {
+  send_result(b"Hello from wasm!!!")
+  0
+}
 ```
 
 ### Preventing early decref
 
-MoonBit's optimizer may schedule the reference count decrement for a value immediately after its last visible use. Without precaution, MoonBit would decref (and potentially free) the array buffer *before* calling the host function, resulting in a use-after-free.
+MoonBit's optimizer may schedule a reference count decrement immediately after the last visible use of a value. Without precaution, the buffer could be freed *before* the host finishes reading or writing it.
 
-A dummy `let _ = arr.length()` call placed *after* the host call prevents this: it gives the compiler a later visible use of `arr`, so the decref is guaranteed to happen only after the host has finished reading or writing the buffer.
+A dummy `let _ = bs.length()` placed *after* the host call prevents this by giving the compiler a later visible use of `bs`:
 
 ```moonbit
-fn send_result_to_host(arr : FixedArray[Byte]) -> Unit {
-  let ptr = fixedarray_data_ptr(arr)
-  let len = arr.length()
-  send_result_to_host_raw(ptr, len)
-  let _ = arr.length() // keep arr alive until after the host read
+fn send_result(bs : Bytes) -> Unit {
+  send_result_to_host_raw(data_ptr(bs), bs.length())
+  let _ = bs.length() // keep bs alive until after the host read
 }
 ```
 
@@ -78,5 +87,4 @@ MoonBit's `wasm` target imports `spectest.print_char` when printing (e.g., via `
 extern "wasm" fn wasm_trap() -> Int =
   #|(func (result i32) unreachable)
 ```
-
 
