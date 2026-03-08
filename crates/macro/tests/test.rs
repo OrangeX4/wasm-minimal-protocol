@@ -299,7 +299,7 @@ fn test_moonbit() {
         panic!("Compiling with moon failed");
     }
     std::fs::copy(
-        dir_path.join("target/wasm/release/build/hello.wasm"),
+        dir_path.join("_build/wasm/release/build/hello.wasm"),
         dir_path.join("hello.wasm"),
     )
     .unwrap();
