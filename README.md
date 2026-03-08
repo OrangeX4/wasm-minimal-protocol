@@ -39,7 +39,7 @@ See the example for your language:
 - [C](./examples/hello_c/)
 - [Go](./examples/hello_go/) 🌟
 - [Haskell](./examples/hello_haskell/)
-- [MoonBit](./examples/hello_moonbit/)
+- [MoonBit](./examples/hello_moonbit/) 🌟
 
 If you want to pass structured data to Typst, the Typst functions [`cbor` and `cbor.encode`](https://typst.app/docs/reference/data-loading/cbor/) are available. Examples marked with 🌟 cover how it's done.
 
