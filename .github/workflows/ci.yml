@@ -63,8 +63,10 @@ jobs:
         uses: actions/cache@v5
         with:
           path: ~/.moon
-          key: moonbit-${{ runner.os }}
+          key: moonbit-0.8.2+8cca5f22a-${{ runner.os }}
       - name: Install MoonBit toolchain for hello_moonbit
+        env:
+          MOONBIT_INSTALL_VERSION: 0.8.2+8cca5f22a
         run: |
           if [ ! -f ~/.moon/bin/moon ]; then
             curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
