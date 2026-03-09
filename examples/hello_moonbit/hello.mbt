@@ -17,11 +17,6 @@ extern "wasm" fn data_ptr(bs : Bytes) -> Int =
   #|  i32.add)
 
 ///|
-/// Inline trap — avoids importing spectest.print_char which Typst doesn't provide.
-extern "wasm" fn wasm_trap() -> Int =
-  #|(func (result i32) unreachable)
-
-///|
 /// FixedArray[Byte] and Bytes have the same representation; this cast is free.
 fn to_bytes(arr : FixedArray[Byte]) -> Bytes = "%identity"
 
@@ -120,5 +115,5 @@ pub fn returns_err() -> Int {
 
 ///|
 pub fn will_panic() -> Int {
-  wasm_trap()
+  panic()
 }
