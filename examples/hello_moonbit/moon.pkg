@@ -1,6 +1,7 @@
-{
-  "link": {
+options(
+  link: {
     "wasm": {
+      "export-memory-name": "memory",
       "exports": [
         "hello",
         "double_it",
@@ -8,9 +9,8 @@
         "shuffle",
         "returns_ok",
         "returns_err",
-        "will_panic"
+        "will_panic",
       ],
-      "export-memory-name": "memory"
-    }
-  }
-}
+    },
+  },
+)
