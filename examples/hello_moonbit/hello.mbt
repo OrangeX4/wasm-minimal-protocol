@@ -1,37 +1,45 @@
-///|
-/// Protocol host imports — only primitive types are valid for wasm stub FFI.
-fn send_result_to_host_raw(ptr : Int, len : Int) = "typst_env" "wasm_minimal_protocol_send_result_to_host"
+// Part 1: Import functions from the protocol and create wrappers.
+// Don't edit this part unless you know what you are doing.
 
 ///|
-fn write_args_to_buffer_raw(ptr : Int) = "typst_env" "wasm_minimal_protocol_write_args_to_buffer"
+fn __send_result_to_host(ptr : Int, len : Int) = "typst_env" "wasm_minimal_protocol_send_result_to_host"
 
 ///|
-/// Returns a raw pointer to the first data byte of bs (heap_ptr + 8).
-/// FixedArray[Byte] and Bytes share the same linear-memory layout, so this
-/// helper works for both via the zero-cost `to_bytes` cast below.
-#borrow(bs)
-extern "wasm" fn data_ptr(bs : Bytes) -> Int =
+fn __write_args_to_buffer(ptr : Int) = "typst_env" "wasm_minimal_protocol_write_args_to_buffer"
+
+///|
+/// Returns a raw pointer to the first data byte of `bytes`.
+#borrow(bytes)
+extern "wasm" fn _as_ptr(bytes : Bytes) -> Int =
   #|(func (param i32) (result i32)
-  #|  local.get 0
-  #|  i32.const 8
-  #|  i32.add)
+  #|  (i32.add (local.get 0) (i32.const 8)))
+// `Bytes` have 8-byte headers, so this is not `%identity`.
+// Note that the ABI for `Bytes` is unstable. Refer to README for further explanation.
 
 ///|
-/// FixedArray[Byte] and Bytes have the same representation; this cast is free.
-fn to_bytes(arr : FixedArray[Byte]) -> Bytes = "%identity"
+/// Reinterpret the byte sequence as Bytes.
+///
+/// Notice that this will make the `Bytes` object to be a view of the original
+/// byte sequence, so any modification to the original byte sequence will be
+/// reflected in the `Bytes` object.
+///
+/// This is a copy of `FixedArray::unsafe_reinterpret_as_bytes`.
+/// https://github.com/moonbitlang/core/blob/a2cc59d/builtin/bytes.mbt#L15-L25
+fn as_bytes(arr : FixedArray[Byte]) -> Bytes = "%identity"
 
 ///|
-fn send_result(bs : Bytes) -> Unit {
-  send_result_to_host_raw(data_ptr(bs), bs.length())
+fn send_result(bytes : Bytes) -> Unit {
+  __send_result_to_host(_as_ptr(bytes), bytes.length())
 }
 
 ///|
 fn write_args(arr : FixedArray[Byte]) -> Unit {
-  let bs = to_bytes(arr)
-  write_args_to_buffer_raw(data_ptr(bs))
+  let bytes = as_bytes(arr)
+  __write_args_to_buffer(_as_ptr(bytes))
 }
 
 // ===
+// Part 2: Implement your own plugin below.
 
 ///|
 pub fn hello() -> Int {
@@ -44,7 +52,7 @@ pub fn double_it(arg1_len : Int) -> Int {
   let result = FixedArray::make(arg1_len * 2, b'\x00')
   write_args(result)
   result.blit_to(result, len=arg1_len, dst_offset=arg1_len)
-  send_result(to_bytes(result))
+  send_result(as_bytes(result))
   0
 }
 
@@ -63,7 +71,7 @@ pub fn concatenate(arg1_len : Int, arg2_len : Int) -> Int {
     dst_offset=arg1_len + 1,
   )
 
-  send_result(to_bytes(result))
+  send_result(as_bytes(result))
   0
 }
 
@@ -97,7 +105,7 @@ pub fn shuffle(arg1_len : Int, arg2_len : Int, arg3_len : Int) -> Int {
   args.blit_to(result, len=arg2_len, src_offset=arg1_len, dst_offset=pos)
   pos += arg2_len
 
-  send_result(to_bytes(result))
+  send_result(as_bytes(result))
   0
 }
 
